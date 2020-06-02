@@ -710,6 +710,46 @@ struct smooth_l1_gradient : public mxnet_op::tunable {
   }
 };  // struct smooth_l1_derivative
 
+/* Smooth Ln Loss is a loss specific for R-CNN franchise training
+ * Smooth Ln Loss function:
+ * f(x) = - ln(1 - x), x <= sigma
+ *      = (x - sigma) / (1 - sigma) - ln(1 - sigma), otherwise
+ * smooth_ln_loss = w_out * f(w_in * x)
+ * with w_in, w_out provided by input_data.
+ */
+struct smooth_ln_loss : public mxnet_op::tunable {
+  // a is x, b is sigma
+  template<typename DType>
+  MSHADOW_XINLINE static DType Map(DType a, DType b) {
+    auto af = math::id(a);
+    auto bf = math::id(b);
+    if (af <= bf) {
+      return DType(- math::log(1 - af));
+    } else {
+      return DType((af - bf) / (1 - bf) - math::log(1 - bf));
+    }
+  }
+};  // struct smooth_ln_loss
+
+/* The derivative of smooth ln loss is
+ * f'(x) = 1 / (1 - x), x <= sigma
+ *       = 1 / (1 - sigma), otherwise
+ */
+struct smooth_ln_gradient : public mxnet_op::tunable {
+  // a is x, b is sigma2
+  template<typename DType>
+  MSHADOW_XINLINE static DType Map(DType a, DType b) {
+    auto af = math::id(a);
+    auto bf = math::id(b);
+    if (af <= bf) {
+      return DType(1 / (1 - af));
+    } else {
+      return DType(1 / (1 - bf));
+    }
+  }
+};  // struct smooth_ln_derivative
+
+
 /*! \brief product reducer */
 struct product {
   /*! \brief do reduction into dst */

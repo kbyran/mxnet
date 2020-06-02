@@ -133,5 +133,57 @@ MXNET_OPERATOR_REGISTER_BINARY(_backward_smooth_l1)
 .set_attr<FCompute>("FCompute<cpu>",
                     BinaryScalarOp::Backward<cpu, mshadow_op::smooth_l1_gradient>);
 
+NNVM_REGISTER_OP(smooth_ln)
+  .describe(R"code(Calculate Smooth Ln Loss(lhs, scalar) by summing
+
+.. math::
+
+    f(x) =
+    \begin{cases}
+    (\sigma x)^2/2,& \text{if }x < 1/\sigma^2\\
+    |x|-0.5/\sigma^2,& \text{otherwise}
+    -\ln(1-x),& \text{if }x <= \sigma\\
+    (x-\sigma)/(1-\sigma) - \ln(1-\sigma),& \text{otherwise}
+    \end{cases}
+
+where :math:`x` is an element of the tensor *lhs* and :math:`\sigma` is the scalar.
+
+Example::
+
+  smooth_ln([0, 1, 2, 3]) = [-ln(1), 1 - ln(1/2), 3 - ln(1/2), 5 - ln(1/2)]
+  smooth_ln([0, 1, 2, 3], scalar=0.5) = [-ln(1), 1 - ln(1/2), 3 - ln(1/2), 5 - ln(1/2)]
+
+)code" ADD_FILELINE)
+.set_num_inputs(1)
+.set_num_outputs(1)
+.set_attr_parser([](NodeAttrs* attrs) {
+    if (attrs->dict.find("scalar") != attrs->dict.end()) {
+      attrs->parsed = std::stod(attrs->dict["scalar"]);
+    } else {
+      attrs->parsed = 0.5;
+    }
+  })
+.set_attr<mxnet::FInferShape>("FInferShape", ElemwiseShape<1, 1>)
+.set_attr<nnvm::FInferType>("FInferType", ElemwiseType<1, 1>)
+.set_attr<nnvm::FInplaceOption>("FInplaceOption",
+                                [](const NodeAttrs& attrs){
+                                  return std::vector<std::pair<int, int> >{{0, 0}};
+                                })
+.add_argument("data", "NDArray-or-Symbol", "source input")
+.add_argument("scalar", "float", "scalar input")
+.set_attr<FCompute>("FCompute<cpu>", BinaryScalarOp::Compute<cpu, mshadow_op::smooth_ln_loss>)
+.set_attr<nnvm::FGradient>("FGradient", ElemwiseGradUseIn{ "_backward_smooth_ln" });
+
+MXNET_OPERATOR_REGISTER_BINARY(_backward_smooth_ln)
+  .set_attr_parser([](NodeAttrs *attrs) {
+      if (attrs->dict.find("scalar") != attrs->dict.end()) {
+        attrs->parsed = std::stod(attrs->dict["scalar"]);
+      } else {
+        attrs->parsed = 0.5;
+      }
+})
+.set_attr<FCompute>("FCompute<cpu>",
+                    BinaryScalarOp::Backward<cpu, mshadow_op::smooth_ln_gradient>);
+
 }  // namespace op
 }  // namespace mxnet

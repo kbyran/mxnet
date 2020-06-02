@@ -69,5 +69,13 @@ NNVM_REGISTER_OP(_backward_smooth_l1)
 .set_attr<FCompute>("FCompute<gpu>", BinaryScalarOp::Backward<
   gpu, mshadow_op::smooth_l1_gradient>);
 
+NNVM_REGISTER_OP(smooth_ln)
+.set_attr<FCompute>("FCompute<gpu>", BinaryScalarOp::Compute<
+  gpu, mshadow_op::smooth_ln_loss>);
+
+NNVM_REGISTER_OP(_backward_smooth_ln)
+.set_attr<FCompute>("FCompute<gpu>", BinaryScalarOp::Backward<
+  gpu, mshadow_op::smooth_ln_gradient>);
+
 }  // namespace op
 }  // namespace mxnet
